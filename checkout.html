@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lantern Books — Checkout</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="logo">Lantern <span>Books</span></a>
+      <nav class="nav">
+        <a href="index.html" class="hide-sm">Home</a>
+        <a href="index.html#shop" class="hide-sm">Shop</a>
+        <a href="cart.html" class="cart-link">Cart<span id="cart-count">0</span></a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- 5. Checkout page where the customer enters name, phone and address -->
+  <main class="section">
+    <div class="container">
+      <h2>Checkout</h2>
+      <div id="checkout-root"></div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">© 2026 Lantern Books · A class project built with Claude Code</div>
+  </footer>
+
+  <script src="js/products.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/config.js"></script>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script>
+    const root = document.getElementById("checkout-root");
+    const items = cartItems();
+    let customer = null;
+
+    if (items.length === 0) {
+      root.innerHTML = `
+        <div class="empty">
+          <p>There's nothing to pay for yet — your cart is empty.</p>
+          <a href="index.html#shop" class="btn btn-primary">Start shopping</a>
+        </div>`;
+    } else {
+      root.innerHTML = `
+        <div class="cart-layout">
+          <form class="form-card" id="details-form" novalidate>
+            <h3>Delivery Details</h3>
+            <label for="name">Full name</label>
+            <input id="name" name="name" type="text" autocomplete="name" placeholder="e.g. Ananya Sharma" required />
+            <div class="field-error" data-for="name"></div>
+
+            <label for="phone">Phone number</label>
+            <input id="phone" name="phone" type="tel" autocomplete="tel" placeholder="e.g. 98765 43210" required />
+            <div class="field-error" data-for="phone"></div>
+
+            <label for="address">Delivery address</label>
+            <textarea id="address" name="address" rows="3" autocomplete="street-address" placeholder="House no., street, city, PIN code" required></textarea>
+            <div class="field-error" data-for="address"></div>
+
+            <h3 style="margin-top:24px">Your Order</h3>
+            ${items.map(({ product, qty, lineTotal }) => `
+              <div class="mini-row">
+                <span>${product.name} <span class="author">× ${qty}</span></span>
+                <span>${money(lineTotal)}</span>
+              </div>`).join("")}
+          </form>
+          <aside class="summary">
+            <h3>Order Summary</h3>
+            <div class="summary-row"><span>Items</span><span>${cartCount()}</span></div>
+            <div class="summary-row"><span>Shipping</span><span>Free</span></div>
+            <div class="summary-row total"><span>Total</span><span>${money(cartTotal())}</span></div>
+            <div class="notice" style="margin:16px 0 0">
+              <strong>Test mode:</strong> payments go through Razorpay's test mode, so no real money is charged.
+            </div>
+            <button type="submit" form="details-form" class="btn btn-primary btn-block" id="pay-now">Pay Now</button>
+            <div id="pay-error" class="error"></div>
+            <a href="cart.html" class="btn btn-ghost btn-block" style="margin-top:8px">Back to Cart</a>
+          </aside>
+        </div>`;
+
+      document.getElementById("details-form").addEventListener("submit", onPayNow);
+    }
+
+    // Checks the form. Returns the customer's details, or null if something is missing.
+    function readForm() {
+      const name = document.getElementById("name").value.trim();
+      const phone = document.getElementById("phone").value.trim();
+      const address = document.getElementById("address").value.trim();
+      const errors = {};
+      if (name.length < 2) errors.name = "Please enter your name.";
+      if (phone.replace(/\D/g, "").length < 10) errors.phone = "Please enter a valid 10-digit mobile number.";
+      if (address.length < 8) errors.address = "Please enter your full address.";
+
+      document.querySelectorAll(".field-error").forEach((el) => {
+        el.textContent = errors[el.dataset.for] || "";
+        document.getElementById(el.dataset.for).classList.toggle("invalid", !!errors[el.dataset.for]);
+      });
+      return Object.keys(errors).length ? null : { name, phone, address };
+    }
+
+    // "Pay Now": if the details are filled in, open the Razorpay payment window.
+    function onPayNow(e) {
+      e.preventDefault();
+      const errorBox = document.getElementById("pay-error");
+      errorBox.textContent = "";
+      customer = readForm();
+      if (!customer) return;
+
+      if (!RAZORPAY_KEY_ID || RAZORPAY_KEY_ID.includes("PASTE_YOUR_KEY")) {
+        errorBox.textContent = "Payment gateway not set up yet: add your Razorpay test Key ID in js/config.js.";
+        return;
+      }
+      if (typeof Razorpay === "undefined") {
+        errorBox.textContent = "Couldn't load the Razorpay payment gateway. Check your internet connection and refresh.";
+        return;
+      }
+
+      const rzp = new Razorpay({
+        key: RAZORPAY_KEY_ID,
+        amount: Math.round(cartTotal() * 100), // Razorpay takes the amount in paise (₹1 = 100 paise)
+        currency: "INR",
+        name: "Lantern Books",
+        description: `${cartCount()} book(s)`,
+        prefill: { name: customer.name, contact: customer.phone },
+        notes: { address: customer.address },
+        theme: { color: "#2f5d50" },
+
+        // Called when the payment succeeds: save the order and show the thank-you page.
+        handler: (response) => {
+          sessionStorage.setItem("lantern-books-last-order", JSON.stringify({
+            id: response.razorpay_payment_id,
+            total: cartTotal(),
+            items: cartItems().map(({ product, qty }) => ({ name: product.name, qty })),
+            customer,
+          }));
+          clearCart();
+          window.location.href = "success.html";
+        },
+      });
+
+      rzp.on("payment.failed", (response) => {
+        errorBox.textContent = "Payment failed: " + response.error.description + " Please try again.";
+      });
+
+      rzp.open();
+    }
+  </script>
+</body>
+</html>

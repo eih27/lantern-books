@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lantern Books — Home</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="logo">Lantern <span>Books</span></a>
+      <nav class="nav">
+        <a href="index.html" class="hide-sm">Home</a>
+        <a href="#shop" class="hide-sm">Shop</a>
+        <a href="cart.html" class="cart-link">Cart<span id="cart-count">0</span></a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- 1. Home page with store name and welcome line -->
+  <section class="hero">
+    <div class="container">
+      <h1>Welcome to Lantern Books</h1>
+      <p>Hand-picked stories and ideas to light up your evenings — delivered to your door.</p>
+      <a href="#shop" class="btn btn-accent">Browse the shelves</a>
+    </div>
+  </section>
+
+  <!-- 2 & 3. Products, each with a picture, name, price and Add to Cart button -->
+  <main class="section" id="shop">
+    <div class="container">
+      <h2>Our Books</h2>
+      <div class="grid" id="product-grid"></div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">© 2026 Lantern Books · A class project built with Claude Code</div>
+  </footer>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="js/products.js"></script>
+  <script src="js/cart.js"></script>
+  <script>
+    const grid = document.getElementById("product-grid");
+    grid.innerHTML = PRODUCTS.map((p) => `
+      <article class="card">
+        <div class="card-cover">${coverSvg(p)}</div>
+        <div class="card-body">
+          <span class="tag">${p.tag}</span>
+          <h3>${p.name}</h3>
+          <p class="author">by ${p.author}</p>
+          <div class="card-footer">
+            <span class="price">${money(p.price)}</span>
+            <button class="btn btn-primary" data-id="${p.id}">Add to Cart</button>
+          </div>
+        </div>
+      </article>`).join("");
+
+    // When an "Add to Cart" button is clicked, add that book and show a message.
+    const toast = document.getElementById("toast");
+    let toastTimer;
+    grid.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-id]");
+      if (!btn) return;
+      addToCart(btn.dataset.id);
+      const product = PRODUCTS.find((p) => p.id === btn.dataset.id);
+      toast.textContent = `Added “${product.name}” to your cart`;
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove("show"), 1800);
+    });
+  </script>
+</body>
+</html>

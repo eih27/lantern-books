@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lantern Books — Thank You</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="logo">Lantern <span>Books</span></a>
+      <nav class="nav">
+        <a href="index.html" class="hide-sm">Home</a>
+        <a href="index.html#shop" class="hide-sm">Shop</a>
+        <a href="cart.html" class="cart-link">Cart<span id="cart-count">0</span></a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- 7. Thank you page shown after the payment is done -->
+  <main class="container success">
+    <div class="tick">✓</div>
+    <h2 id="thanks">Thank you for your order!</h2>
+    <p id="details">Your payment was successful.</p>
+    <div id="order-box"></div>
+    <a href="index.html" class="btn btn-primary">Back to the store</a>
+  </main>
+
+  <script src="js/products.js"></script>
+  <script src="js/cart.js"></script>
+  <script>
+    const order = JSON.parse(sessionStorage.getItem("lantern-books-last-order") || "null");
+
+    // Escapes text the customer typed so it can't break the page.
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+    if (order) {
+      const c = order.customer || {};
+      if (c.name) document.getElementById("thanks").textContent = `Thank you, ${c.name}!`;
+      document.getElementById("details").innerHTML =
+        `Your payment of <strong>${money(order.total)}</strong> was successful.`;
+      document.getElementById("order-box").innerHTML = `
+        <div class="summary order-receipt">
+          <div class="summary-row"><span>Order ID</span><code>${esc(order.id)}</code></div>
+          ${(order.items || []).map((i) => `<div class="summary-row"><span>${esc(i.name)}</span><span>× ${i.qty}</span></div>`).join("")}
+          <div class="summary-row total"><span>Total paid</span><span>${money(order.total)}</span></div>
+          <p class="author" style="margin:12px 0 0">Delivering to ${esc(c.name || "")}<br>${esc(c.address || "")}<br>${esc(c.phone || "")}</p>
+        </div>`;
+    }
+  </script>
+</body>
+</html>
